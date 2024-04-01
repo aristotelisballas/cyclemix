@@ -23,6 +23,8 @@ from domainbed.lib.fast_data_loader import InfiniteDataLoader, FastDataLoader
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Domain generalization')
+    parser.add_argument('--lr', type=float)
+    parser.add_argument('--batch_size', type=int)
     parser.add_argument('--data_dir', type=str)
     parser.add_argument('--dataset', type=str, default="RotatedMNIST")
     parser.add_argument('--algorithm', type=str, default="ERM")
@@ -80,6 +82,13 @@ if __name__ == "__main__":
     if args.hparams:
         hparams.update(json.loads(args.hparams))
 
+    if args.batch_size is not None:
+        hparams['batch_size'] = args.batch_size
+    if args.lr is not None:
+        hparams['lr'] = args.lr
+    if args.algorithm in ["CYCLEMIX"]:
+        hparams['dataset'] = args.dataset
+        hparams['test_envs'] = args.test_envs
     print('HParams:')
     for k, v in sorted(hparams.items()):
         print('\t{}: {}'.format(k, v))
