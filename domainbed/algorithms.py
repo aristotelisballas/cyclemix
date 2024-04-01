@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
+from torchvision import transforms
 
 import copy
 import numpy as np
@@ -20,9 +21,15 @@ from domainbed.lib.misc import (
     MovingAverage, l2_between_dicts, proj, Nonparametric
 )
 
+# CYCLEGAN Experiments
+from domainbed.cyclegan.networks import define_G
+from domainbed.cyclegan.utils import get_sources
+from domainbed.lib.cyclemix_loss import cyclemix_contra_loss
+
 
 ALGORITHMS = [
     'ERM',
+    'CYCLEMIX'
     'Fish',
     'IRM',
     'GroupDRO',
@@ -2033,3 +2040,134 @@ class EQRM(ERM):
         self.update_count += 1
 
         return {'loss': loss.item()}
+
+class CYCLEMIX(Algorithm):
+    """
+    CycleMIX with custom contrastive loss function
+    """
+
+    def __init__(self, input_shape, num_classes, num_domains, hparams):
+        super(CYCLEMIX, self).__init__(input_shape, num_classes, num_domains,
+                                       hparams)
+        self.featurizer = networks.Featurizer(input_shape, self.hparams)
+        self.classifier = networks.Classifier(
+            self.featurizer.n_outputs,
+            num_classes,
+            self.hparams['nonlinear_classifier'])
+
+        # self.network = nn.Sequential(self.featurizer, self.classifier)
+        self.optimizer = torch.optim.Adam(
+            list(self.featurizer.parameters()) + list(self.classifier.parameters()),
+            lr=self.hparams["lr"],
+            weight_decay=self.hparams['weight_decay']
+        )
+        self.batch_size = hparams['batch_size']
+
+        # GAN AUGEMENTATION
+        self.device = next(self.featurizer.parameters()).device
+        self.dataset = hparams["dataset"]
+
+        if torch.cuda.is_available():
+            gpu_id = [0]
+        else:
+            gpu_id = []
+
+        source1, source2, source3 = get_sources(hparams["dataset"], hparams["test_envs"])
+
+        self.source1 = source1
+        self.source2 = source2
+        self.source3 = source3
+
+        self.gan1_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                               False, 'normal', 0.02, gpu_id)
+
+        self.gan1_2.load_state_dict(torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source2 + '.pth',
+                                               map_location=torch.device(self.device)))
+        self.gan1_2.eval()
+
+        self.gan1_3 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                               False, 'normal', 0.02, gpu_id)
+
+        self.gan1_3.load_state_dict(torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source3 + '.pth',
+                                               map_location=torch.device(self.device)))
+        self.gan1_3.eval()
+
+        self.gan2_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                               False, 'normal', 0.02, gpu_id)
+
+        self.gan2_1.load_state_dict(torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source1 + '.pth',
+                                                   map_location=torch.device(self.device)))
+        self.gan2_1.eval()
+
+        self.gan2_3 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                               False, 'normal', 0.02, gpu_id)
+
+        self.gan2_3.load_state_dict(torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source3 + '.pth',
+                                               map_location=torch.device(self.device)))
+        self.gan2_3.eval()
+
+        self.gan3_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                               False, 'normal', 0.02, gpu_id)
+
+        self.gan3_1.load_state_dict(torch.load('./domainbed/cyclegan/weights/PACS/' + source3 + '2' + source1 + '.pth',
+                                               map_location=torch.device(self.device)))
+        self.gan3_1.eval()
+
+        self.gan3_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                               False, 'normal', 0.02, gpu_id)
+
+        self.gan3_2.load_state_dict(torch.load('./domainbed/cyclegan/weights/PACS/' + source3 + '2' + source2 + '.pth',
+                                               map_location=torch.device(self.device)))
+        self.gan3_2.eval()
+
+    def update(self, minibatches, unlabeled=None):
+        # all_x = torch.cat([x for x, y in minibatches])
+        # all_y = torch.cat([y for x, y in minibatches])
+        ENVIRONMENTS = ["A", "C", "P", "S"]
+        if self.dataset == 'PACS':
+            b1, b2, b3 = minibatches
+            x_1, y_task_1 = b1
+            x_2, y_task_2 = b1
+            x_3, y_task_3 = b1
+
+            # GAN TRANSFORMATIONS
+            norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+
+            alpha, beta, gamma = np.round(np.random.dirichlet(np.ones(3)), 2)
+
+            ## TRANSFORM THE WHOLE BATCH
+            x_1 = (alpha * x_1) + (beta * self.gan1_2(x_1)) + (gamma * self.gan1_3(x_1))
+            x_1.detach()
+            x_1 = norm(x_1)
+
+            x_2 = (alpha * self.gan2_1(x_2)) + (beta * x_2) + (gamma * self.gan2_3(x_2))
+            x_2.detach()
+            x_2 = norm(x_2)
+
+            x_3 = (alpha * self.gan3_1(x_3)) + (beta * self.gan3_2(x_3)) + (gamma * x_3)
+            x_3.detach()
+            x_3 = norm(x_3)
+
+            all_x = torch.cat((x_1.detach(), x_2.detach(), x_3.detach()), dim=0)
+            all_y = torch.cat((y_task_1, y_task_2, y_task_3), dim=0)
+
+            # Compute features
+            features = self.featurizer(all_x)
+            all_y_hat = self.classifier(features)
+
+            ce_loss = F.cross_entropy(all_y_hat, all_y)
+            cont_loss = -0.01 * cyclemix_contra_loss(features, all_y, 1)
+
+            loss = ce_loss + cont_loss
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            return {'loss': loss.item()}
+        else:
+            raise NotImplementedError("Dataset not implemented for GAN ERM yet")
+
+    def predict(self, x):
+
+        return self.classifier(self.featurizer(x))
