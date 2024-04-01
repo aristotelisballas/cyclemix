@@ -222,7 +222,13 @@ if __name__ == "__main__":
                 for x,_ in next(uda_minibatches_iterator)]
         else:
             uda_device = None
-        step_vals = algorithm.update(minibatches_device, uda_device)
+        if args.algorithm != 'CYCLMIX':
+            step_vals = algorithm.update(minibatches_device, uda_device)
+        else:
+            if (step / steps_per_epoch) < 15:
+                step_vals = algorithm.update(minibatches_device, uda_device, warmup=True)
+            else:
+                step_vals = algorithm.update(minibatches_device, uda_device, warmup=False)
         checkpoint_vals['step_time'].append(time.time() - step_start_time)
 
         for key, val in step_vals.items():

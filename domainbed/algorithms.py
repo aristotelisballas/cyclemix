@@ -2056,7 +2056,7 @@ class CYCLEMIX(Algorithm):
             self.hparams['nonlinear_classifier'])
 
         # self.network = nn.Sequential(self.featurizer, self.classifier)
-        self.optimizer = torch.optim.Adam(
+        self.optimizer = torch.optim.SGD(
             list(self.featurizer.parameters()) + list(self.classifier.parameters()),
             lr=self.hparams["lr"],
             weight_decay=self.hparams['weight_decay']
@@ -2120,10 +2120,10 @@ class CYCLEMIX(Algorithm):
                                                map_location=torch.device(self.device)))
         self.gan3_2.eval()
 
-    def update(self, minibatches, unlabeled=None):
+    def update(self, minibatches, unlabeled=None, warmup=False):
         # all_x = torch.cat([x for x, y in minibatches])
         # all_y = torch.cat([y for x, y in minibatches])
-        ENVIRONMENTS = ["A", "C", "P", "S"]
+        # ENVIRONMENTS = ["A", "C", "P", "S"]
         if self.dataset == 'PACS':
             b1, b2, b3 = minibatches
             x_1, y_task_1 = b1
@@ -2134,19 +2134,21 @@ class CYCLEMIX(Algorithm):
             norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
             alpha, beta, gamma = np.round(np.random.dirichlet(np.ones(3)), 2)
+            p = 0.0
+            if not warmup:
+                ## TRANSFORM THE WHOLE BATCH
+                x_1 = (alpha * x_1) + (beta * self.gan1_2(x_1)) + (gamma * self.gan1_3(x_1))
+                x_1.detach()
+                x_1 = norm(x_1)
 
-            ## TRANSFORM THE WHOLE BATCH
-            x_1 = (alpha * x_1) + (beta * self.gan1_2(x_1)) + (gamma * self.gan1_3(x_1))
-            x_1.detach()
-            x_1 = norm(x_1)
+                x_2 = (alpha * self.gan2_1(x_2)) + (beta * x_2) + (gamma * self.gan2_3(x_2))
+                x_2.detach()
+                x_2 = norm(x_2)
 
-            x_2 = (alpha * self.gan2_1(x_2)) + (beta * x_2) + (gamma * self.gan2_3(x_2))
-            x_2.detach()
-            x_2 = norm(x_2)
-
-            x_3 = (alpha * self.gan3_1(x_3)) + (beta * self.gan3_2(x_3)) + (gamma * x_3)
-            x_3.detach()
-            x_3 = norm(x_3)
+                x_3 = (alpha * self.gan3_1(x_3)) + (beta * self.gan3_2(x_3)) + (gamma * x_3)
+                x_3.detach()
+                x_3 = norm(x_3)
+                p = 0.01
 
             all_x = torch.cat((x_1.detach(), x_2.detach(), x_3.detach()), dim=0)
             all_y = torch.cat((y_task_1, y_task_2, y_task_3), dim=0)
@@ -2156,7 +2158,7 @@ class CYCLEMIX(Algorithm):
             all_y_hat = self.classifier(features)
 
             ce_loss = F.cross_entropy(all_y_hat, all_y)
-            cont_loss = -0.01 * cyclemix_contra_loss(features, all_y, 1)
+            cont_loss = -p * cyclemix_contra_loss(features, all_y, 1)
 
             loss = ce_loss + cont_loss
 
