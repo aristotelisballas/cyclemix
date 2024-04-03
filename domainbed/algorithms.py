@@ -255,28 +255,28 @@ class GANERM(Algorithm):
                     ## ONLY TRANSFORM FIRST HALF OF BATCH
                     x_1[:t_idx] = (x_1[:t_idx] + (alpha * self.gan1_2(x_1[:t_idx]))
                                    + (beta * self.gan1_3(x_1[:t_idx])))
-                    # x_1[:t_idx].detach()
+                    x_1[:t_idx].detach()
                     x_1[:t_idx] = norm(x_1[:t_idx])
 
                     x_2[:t_idx] = (x_2[:t_idx] + (alpha * self.gan2_1(x_2[:t_idx]))
                                    + (beta * self.gan2_3(x_2[:t_idx])))
-                    # x_2[:t_idx].detach()
+                    x_2[:t_idx].detach()
                     x_2[:t_idx] = norm(x_2[:t_idx])
 
                     x_3[:t_idx] = (x_3[:t_idx] + (alpha * self.gan3_1(x_3[:t_idx]))
                                    + (beta * self.gan3_2(x_3[:t_idx])))
-                    # x_3[:t_idx].detach()
+                    x_3[:t_idx].detach()
                     x_3[:t_idx] = norm(x_3[:t_idx])
                 else:
                     ## ONLY TRANSFORM SECOND HALF OF BATCH
                     x_1[t_idx:] = (x_1[t_idx:] + (alpha * self.gan1_2(x_1[t_idx:]))
                                    + (beta * self.gan1_3(x_1[t_idx:])))
-                    # x_1[t_idx:].detach()
+                    x_1[t_idx:].detach()
                     x_1[t_idx:] = norm(x_1[t_idx:])
 
                     x_2[t_idx:] = (x_2[t_idx:] + (alpha * self.gan2_1(x_2[t_idx:]))
                                    + (beta * self.gan2_3(x_2[t_idx:])))
-                    # x_2[t_idx:].detach()
+                    x_2[t_idx:].detach()
                     x_2[t_idx:] = norm(x_2[t_idx:])
 
                     x_3[t_idx:] = (x_3[t_idx:] + (alpha * self.gan3_1(x_3[t_idx:]))
@@ -289,7 +289,7 @@ class GANERM(Algorithm):
             elif len(self.sources) == 2:
                 b1, b2 = minibatches
                 x_1, y_task_1 = b1
-                x_2, y_task_2 = b1
+                x_2, y_task_2 = b2
 
                 first_half = np.random.uniform() < 0.5
 
