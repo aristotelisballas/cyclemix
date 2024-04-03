@@ -113,7 +113,7 @@ class ERM(Algorithm):
         )
 
         self.gan_transform = hparams["gan_transform"]
-
+        self.device = next(self.featurizer.parameters()).device
         if torch.cuda.is_available():
             gpu_id = [0]
         else:
