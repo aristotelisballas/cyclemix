@@ -91,6 +91,7 @@ class Algorithm(torch.nn.Module):
     def predict(self, x):
         raise NotImplementedError
 
+
 class ERM(Algorithm):
     """
     Empirical Risk Minimization (ERM)
@@ -200,7 +201,7 @@ class ERM(Algorithm):
 
     def update(self, minibatches, unlabeled=None):
         norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
-        if self.hparams["dataset"] == 'PACS':
+        if self.hparams["dataset"] == 'PACS' and self.hparams["gan_transform"]:
             if len(self.sources) == 3:
                 b1, b2, b3 = minibatches
                 x_1, y_task_1 = b1
@@ -212,7 +213,7 @@ class ERM(Algorithm):
 
                 first_half = np.random.uniform() < 0.5
 
-                t_idx = int(len(x_1) / 2)
+                t_idx = int(self.hparams['batch_size'] / 2)
 
                 if first_half:
                     ## ONLY TRANSFORM FIRST HALF OF BATCH
