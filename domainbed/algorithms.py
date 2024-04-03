@@ -241,8 +241,8 @@ class GANERM(Algorithm):
             if len(self.sources) == 3:
                 b1, b2, b3 = minibatches
                 x_1, y_task_1 = b1
-                x_2, y_task_2 = b1
-                x_3, y_task_3 = b1
+                x_2, y_task_2 = b2
+                x_3, y_task_3 = b3
 
                 # GAN TRANSFORMATIONS
                 alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
@@ -2362,8 +2362,8 @@ class CYCLEMIX(Algorithm):
             if len(self.sources) == 3:
                 b1, b2, b3 = minibatches
                 x_1, y_task_1 = b1
-                x_2, y_task_2 = b1
-                x_3, y_task_3 = b1
+                x_2, y_task_2 = b2
+                x_3, y_task_3 = b3
 
                 # GAN TRANSFORMATIONS
                 norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
@@ -2394,7 +2394,7 @@ class CYCLEMIX(Algorithm):
             elif len(self.sources) == 2:
                 b1, b2 = minibatches
                 x_1, y_task_1 = b1
-                x_2, y_task_2 = b1
+                x_2, y_task_2 = b2
 
                 # GAN TRANSFORMATIONS
                 norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
