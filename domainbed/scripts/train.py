@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Domain generalization')
     parser.add_argument('--lr', type=float)
     parser.add_argument('--batch_size', type=int)
-    parser.add_argument('--gan_transform', type=int, default=0)
+    parser.add_argument('--gan_transform', type=int, default=1)
     parser.add_argument('--data_dir', type=str)
     parser.add_argument('--dataset', type=str, default="RotatedMNIST")
     parser.add_argument('--algorithm', type=str, default="ERM")
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         hparams['lr'] = args.lr
     hparams['dataset'] = args.dataset
     hparams['test_envs'] = args.test_envs
-    hparams['gan_augment'] = (args.gan_transform == 0)
+    hparams['gan_transform'] = (args.gan_transform == 0)
     print('HParams:')
     for k, v in sorted(hparams.items()):
         print('\t{}: {}'.format(k, v))
