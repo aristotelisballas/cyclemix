@@ -249,7 +249,7 @@ class ERM(Algorithm):
 
                 all_x = torch.cat((x_1.detach(), x_2.detach(), x_3.detach()), dim=0)
                 all_y = torch.cat((y_task_1, y_task_2, y_task_3), dim=0)
-            elif len(self.sources == 2):
+            elif len(self.sources) == 2:
                 b1, b2 = minibatches
                 x_1, y_task_1 = b1
                 x_2, y_task_2 = b1
