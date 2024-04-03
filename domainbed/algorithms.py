@@ -113,6 +113,42 @@ class ERM(Algorithm):
             weight_decay=self.hparams['weight_decay']
         )
 
+    def update(self, minibatches, unlabeled=None):
+        all_x = torch.cat([x for x, y in minibatches])
+        all_y = torch.cat([y for x, y in minibatches])
+        loss = F.cross_entropy(self.predict(all_x), all_y)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {'loss': loss.item()}
+
+    def predict(self, x):
+        return self.network(x)
+
+
+class GANERM(Algorithm):
+    """
+    Empirical Risk Minimization (ERM)
+    """
+
+    def __init__(self, input_shape, num_classes, num_domains, hparams):
+        super(GANERM, self).__init__(input_shape, num_classes, num_domains,
+                                  hparams)
+        self.featurizer = networks.Featurizer(input_shape, self.hparams)
+        self.classifier = networks.Classifier(
+            self.featurizer.n_outputs,
+            num_classes,
+            self.hparams['nonlinear_classifier'])
+
+        self.network = nn.Sequential(self.featurizer, self.classifier)
+        self.optimizer = torch.optim.Adam(
+            self.network.parameters(),
+            lr=self.hparams["lr"],
+            weight_decay=self.hparams['weight_decay']
+        )
+
         self.gan_transform = hparams["gan_transform"]
         self.device = next(self.featurizer.parameters()).device
         if torch.cuda.is_available():
@@ -219,28 +255,28 @@ class ERM(Algorithm):
                     ## ONLY TRANSFORM FIRST HALF OF BATCH
                     x_1[:t_idx] = (x_1[:t_idx] + (alpha * self.gan1_2(x_1[:t_idx]))
                                    + (beta * self.gan1_3(x_1[:t_idx])))
-                    x_1[:t_idx].detach()
+                    # x_1[:t_idx].detach()
                     x_1[:t_idx] = norm(x_1[:t_idx])
 
                     x_2[:t_idx] = (x_2[:t_idx] + (alpha * self.gan2_1(x_2[:t_idx]))
                                    + (beta * self.gan2_3(x_2[:t_idx])))
-                    x_2[:t_idx].detach()
+                    # x_2[:t_idx].detach()
                     x_2[:t_idx] = norm(x_2[:t_idx])
 
                     x_3[:t_idx] = (x_3[:t_idx] + (alpha * self.gan3_1(x_3[:t_idx]))
                                    + (beta * self.gan3_2(x_3[:t_idx])))
-                    x_3[:t_idx].detach()
+                    # x_3[:t_idx].detach()
                     x_3[:t_idx] = norm(x_3[:t_idx])
                 else:
                     ## ONLY TRANSFORM SECOND HALF OF BATCH
                     x_1[t_idx:] = (x_1[t_idx:] + (alpha * self.gan1_2(x_1[t_idx:]))
                                    + (beta * self.gan1_3(x_1[t_idx:])))
-                    x_1[t_idx:].detach()
+                    # x_1[t_idx:].detach()
                     x_1[t_idx:] = norm(x_1[t_idx:])
 
                     x_2[t_idx:] = (x_2[t_idx:] + (alpha * self.gan2_1(x_2[t_idx:]))
                                    + (beta * self.gan2_3(x_2[t_idx:])))
-                    x_2[t_idx:].detach()
+                    # x_2[t_idx:].detach()
                     x_2[t_idx:] = norm(x_2[t_idx:])
 
                     x_3[t_idx:] = (x_3[t_idx:] + (alpha * self.gan3_1(x_3[t_idx:]))
