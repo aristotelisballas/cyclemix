@@ -442,6 +442,8 @@ class GANERM(Algorithm):
         # all_x = torch.cat([x for x, y in minibatches])
         # all_y = torch.cat([y for x, y in minibatches])
         # ENVIRONMENTS = ["A", "C", "P", "S"]
+        t_idx = int(self.hparams['batch_size'] / 2)
+
         if self.dataset == 'PACS':
             if len(self.sources) == 3:
                 b1, b2, b3 = minibatches
@@ -454,7 +456,6 @@ class GANERM(Algorithm):
 
                 alpha, beta, gamma = np.round(np.random.dirichlet(np.ones(3)), 2)
                 p = 0.0
-                t_idx = int(self.hparams['batch_size'] / 2)
                 if not warmup:
                     ## TRANSFORM THE WHOLE BATCH
                     x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx])) + (gamma * self.gan1_3(x_1[:t_idx]))
@@ -488,13 +489,13 @@ class GANERM(Algorithm):
                 p = 0.0
                 if not warmup:
                     ## TRANSFORM THE WHOLE BATCH
-                    x_1 = (alpha * x_1) + (beta * self.gan1_2(x_1))
-                    x_1.detach()
-                    x_1 = norm(x_1)
+                    x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx]))
+                    x_1[:t_idx].detach()
+                    x_1[:t_idx] = norm(x_1[:t_idx])
 
-                    x_2 = (alpha * self.gan2_1(x_2)) + (beta * x_2)
-                    x_2.detach()
-                    x_2 = norm(x_2)
+                    x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + (beta * x_2[:t_idx])
+                    x_2[:t_idx].detach()
+                    x_2[:t_idx] = norm(x_2[:t_idx])
 
                     p = 0.01
 
