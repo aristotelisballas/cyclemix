@@ -128,116 +128,321 @@ class ERM(Algorithm):
         return self.network(x)
 
 
+# class GANERM(Algorithm):
+#     """
+#     Empirical Risk Minimization (ERM)
+#     """
+#
+#     def __init__(self, input_shape, num_classes, num_domains, hparams):
+#         super(GANERM, self).__init__(input_shape, num_classes, num_domains,
+#                                   hparams)
+#         self.featurizer = networks.Featurizer(input_shape, self.hparams)
+#         self.classifier = networks.Classifier(
+#             self.featurizer.n_outputs,
+#             num_classes,
+#             self.hparams['nonlinear_classifier'])
+#
+#         self.network = nn.Sequential(self.featurizer, self.classifier)
+#         self.optimizer = torch.optim.Adam(
+#             self.network.parameters(),
+#             lr=self.hparams["lr"],
+#             weight_decay=self.hparams['weight_decay']
+#         )
+#
+#         self.gan_transform = hparams["gan_transform"]
+#         self.device = next(self.featurizer.parameters()).device
+#         if torch.cuda.is_available():
+#             gpu_id = [0]
+#         else:
+#             gpu_id = []
+#
+#         if self.gan_transform:
+#             self.sources = get_sources(hparams["dataset"], hparams["test_envs"])
+#             if len(self.sources) == 3:
+#                 source1, source2, source3 = get_sources(hparams["dataset"], hparams["test_envs"])
+#
+#                 self.source1 = source1
+#                 self.source2 = source2
+#                 self.source3 = source3
+#
+#                 self.gan1_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+#                                        False, 'normal', 0.02, gpu_id)
+#
+#                 self.gan1_2.load_state_dict(
+#                     torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source2 + '.pth',
+#                                map_location=torch.device(self.device)))
+#                 self.gan1_2.eval()
+#
+#                 self.gan1_3 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+#                                        False, 'normal', 0.02, gpu_id)
+#
+#                 self.gan1_3.load_state_dict(
+#                     torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source3 + '.pth',
+#                                map_location=torch.device(self.device)))
+#                 self.gan1_3.eval()
+#
+#                 self.gan2_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+#                                        False, 'normal', 0.02, gpu_id)
+#
+#                 self.gan2_1.load_state_dict(
+#                     torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source1 + '.pth',
+#                                map_location=torch.device(self.device)))
+#                 self.gan2_1.eval()
+#
+#                 self.gan2_3 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+#                                        False, 'normal', 0.02, gpu_id)
+#
+#                 self.gan2_3.load_state_dict(
+#                     torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source3 + '.pth',
+#                                map_location=torch.device(self.device)))
+#                 self.gan2_3.eval()
+#
+#                 self.gan3_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+#                                        False, 'normal', 0.02, gpu_id)
+#
+#                 self.gan3_1.load_state_dict(
+#                     torch.load('./domainbed/cyclegan/weights/PACS/' + source3 + '2' + source1 + '.pth',
+#                                map_location=torch.device(self.device)))
+#                 self.gan3_1.eval()
+#
+#                 self.gan3_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+#                                        False, 'normal', 0.02, gpu_id)
+#
+#                 self.gan3_2.load_state_dict(
+#                     torch.load('./domainbed/cyclegan/weights/PACS/' + source3 + '2' + source2 + '.pth',
+#                                map_location=torch.device(self.device)))
+#                 self.gan3_2.eval()
+#             elif len(self.sources) == 2:
+#                 source1, source2 = get_sources(hparams["dataset"], hparams["test_envs"])
+#                 self.source1 = source1
+#                 self.source2 = source2
+#
+#                 self.gan1_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+#                                        False, 'normal', 0.02, gpu_id)
+#
+#                 self.gan1_2.load_state_dict(
+#                     torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source2 + '.pth',
+#                                map_location=torch.device(self.device)))
+#                 self.gan1_2.eval()
+#
+#                 self.gan2_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+#                                        False, 'normal', 0.02, gpu_id)
+#
+#                 self.gan2_1.load_state_dict(
+#                     torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source1 + '.pth',
+#                                map_location=torch.device(self.device)))
+#                 self.gan2_1.eval()
+#             else:
+#                 raise NotImplementedError
+#
+#     def update(self, minibatches, unlabeled=None):
+#         norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+#         if self.hparams["dataset"] == 'PACS' and self.hparams["gan_transform"]:
+#             if len(self.sources) == 3:
+#                 b1, b2, b3 = minibatches
+#                 x_1, y_task_1 = b1
+#                 x_2, y_task_2 = b2
+#                 x_3, y_task_3 = b3
+#
+#                 # GAN TRANSFORMATIONS
+#                 alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
+#
+#                 first_half = np.random.uniform() < 0.5
+#
+#                 t_idx = int(self.hparams['batch_size'] / 2)
+#
+#                 if first_half:
+#                     ## ONLY TRANSFORM FIRST HALF OF BATCH
+#                     x_1[:t_idx] = (x_1[:t_idx] + (alpha * self.gan1_2(x_1[:t_idx]))
+#                                    + (beta * self.gan1_3(x_1[:t_idx])))
+#                     x_1[:t_idx].detach()
+#                     x_1[:t_idx] = norm(x_1[:t_idx])
+#
+#                     x_2[:t_idx] = (x_2[:t_idx] + (alpha * self.gan2_1(x_2[:t_idx]))
+#                                    + (beta * self.gan2_3(x_2[:t_idx])))
+#                     x_2[:t_idx].detach()
+#                     x_2[:t_idx] = norm(x_2[:t_idx])
+#
+#                     x_3[:t_idx] = (x_3[:t_idx] + (alpha * self.gan3_1(x_3[:t_idx]))
+#                                    + (beta * self.gan3_2(x_3[:t_idx])))
+#                     x_3[:t_idx].detach()
+#                     x_3[:t_idx] = norm(x_3[:t_idx])
+#                 else:
+#                     ## ONLY TRANSFORM SECOND HALF OF BATCH
+#                     x_1[t_idx:] = (x_1[t_idx:] + (alpha * self.gan1_2(x_1[t_idx:]))
+#                                    + (beta * self.gan1_3(x_1[t_idx:])))
+#                     x_1[t_idx:].detach()
+#                     x_1[t_idx:] = norm(x_1[t_idx:])
+#
+#                     x_2[t_idx:] = (x_2[t_idx:] + (alpha * self.gan2_1(x_2[t_idx:]))
+#                                    + (beta * self.gan2_3(x_2[t_idx:])))
+#                     x_2[t_idx:].detach()
+#                     x_2[t_idx:] = norm(x_2[t_idx:])
+#
+#                     x_3[t_idx:] = (x_3[t_idx:] + (alpha * self.gan3_1(x_3[t_idx:]))
+#                                    + (beta * self.gan3_2(x_3[t_idx:])))
+#                     x_3[t_idx:].detach()
+#                     x_3[t_idx:] = norm(x_3[t_idx:])
+#
+#                 all_x = torch.cat((x_1.detach(), x_2.detach(), x_3.detach()), dim=0)
+#                 all_y = torch.cat((y_task_1, y_task_2, y_task_3), dim=0)
+#             elif len(self.sources) == 2:
+#                 b1, b2 = minibatches
+#                 x_1, y_task_1 = b1
+#                 x_2, y_task_2 = b2
+#
+#                 first_half = np.random.uniform() < 0.5
+#
+#                 t_idx = int(len(x_1) / 2)
+#                 # GAN TRANSFORMATIONS
+#                 alpha = np.round(np.random.random(), 2)
+#
+#                 if first_half:
+#                     ## ONLY TRANSFORM FIRST HALF OF BATCH
+#                     x_1[:t_idx] = (x_1[:t_idx] + (alpha * self.gan1_2(x_1[:t_idx])))
+#                     x_1[:t_idx].detach()
+#                     x_1[:t_idx] = norm(x_1[:t_idx])
+#
+#                     x_2[:t_idx] = (x_2[:t_idx] + (alpha * self.gan2_1(x_2[:t_idx])))
+#                     x_2[:t_idx].detach()
+#                     x_2[:t_idx] = norm(x_2[:t_idx])
+#                 else:
+#                     ## ONLY TRANSFORM SECOND HALF OF BATCH
+#                     x_1[t_idx:] = (x_1[t_idx:] + (alpha * self.gan1_2(x_1[t_idx:])))
+#                     x_1[t_idx:].detach()
+#                     x_1[t_idx:] = norm(x_1[t_idx:])
+#
+#                     x_2[t_idx:] = (x_2[t_idx:] + (alpha * self.gan2_1(x_2[t_idx:])))
+#                     x_2[t_idx:].detach()
+#                     x_2[t_idx:] = norm(x_2[t_idx:])
+#
+#                 all_x = torch.cat((x_1.detach(), x_2.detach()), dim=0)
+#                 all_y = torch.cat((y_task_1, y_task_2), dim=0)
+#             else:
+#                 raise NotImplementedError
+#             loss = F.cross_entropy(self.predict(all_x), all_y)
+#         else:
+#             all_x = torch.cat([x for x, y in minibatches])
+#             all_y = torch.cat([y for x, y in minibatches])
+#             loss = F.cross_entropy(self.predict(all_x), all_y)
+#
+#         self.optimizer.zero_grad()
+#         loss.backward()
+#         self.optimizer.step()
+#
+#         return {'loss': loss.item()}
+#
+#     def predict(self, x):
+#         return self.network(x)
+
 class GANERM(Algorithm):
     """
-    Empirical Risk Minimization (ERM)
+    CycleMIX with custom contrastive loss function
     """
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super(GANERM, self).__init__(input_shape, num_classes, num_domains,
-                                  hparams)
+                                       hparams)
         self.featurizer = networks.Featurizer(input_shape, self.hparams)
         self.classifier = networks.Classifier(
             self.featurizer.n_outputs,
             num_classes,
             self.hparams['nonlinear_classifier'])
 
-        self.network = nn.Sequential(self.featurizer, self.classifier)
-        self.optimizer = torch.optim.Adam(
-            self.network.parameters(),
+        # self.network = nn.Sequential(self.featurizer, self.classifier)
+        self.optimizer = torch.optim.SGD(
+            list(self.featurizer.parameters()) + list(self.classifier.parameters()),
             lr=self.hparams["lr"],
             weight_decay=self.hparams['weight_decay']
         )
+        self.batch_size = hparams['batch_size']
 
-        self.gan_transform = hparams["gan_transform"]
+        # GAN AUGEMENTATION
         self.device = next(self.featurizer.parameters()).device
+        self.dataset = hparams["dataset"]
+
         if torch.cuda.is_available():
             gpu_id = [0]
         else:
             gpu_id = []
 
-        if self.gan_transform:
-            self.sources = get_sources(hparams["dataset"], hparams["test_envs"])
-            if len(self.sources) == 3:
-                source1, source2, source3 = get_sources(hparams["dataset"], hparams["test_envs"])
+        self.sources = get_sources(hparams["dataset"], hparams["test_envs"])
+        if len(self.sources) == 3:
+            source1, source2, source3 = get_sources(hparams["dataset"], hparams["test_envs"])
 
-                self.source1 = source1
-                self.source2 = source2
-                self.source3 = source3
+            self.source1 = source1
+            self.source2 = source2
+            self.source3 = source3
 
-                self.gan1_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
-                                       False, 'normal', 0.02, gpu_id)
+            self.gan1_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
 
-                self.gan1_2.load_state_dict(
-                    torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source2 + '.pth',
-                               map_location=torch.device(self.device)))
-                self.gan1_2.eval()
+            self.gan1_2.load_state_dict(torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source2 + '.pth',
+                                                   map_location=torch.device(self.device)))
+            self.gan1_2.eval()
 
-                self.gan1_3 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
-                                       False, 'normal', 0.02, gpu_id)
+            self.gan1_3 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
 
-                self.gan1_3.load_state_dict(
-                    torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source3 + '.pth',
-                               map_location=torch.device(self.device)))
-                self.gan1_3.eval()
+            self.gan1_3.load_state_dict(torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source3 + '.pth',
+                                                   map_location=torch.device(self.device)))
+            self.gan1_3.eval()
 
-                self.gan2_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
-                                       False, 'normal', 0.02, gpu_id)
+            self.gan2_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
 
-                self.gan2_1.load_state_dict(
-                    torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source1 + '.pth',
-                               map_location=torch.device(self.device)))
-                self.gan2_1.eval()
+            self.gan2_1.load_state_dict(torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source1 + '.pth',
+                                                       map_location=torch.device(self.device)))
+            self.gan2_1.eval()
 
-                self.gan2_3 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
-                                       False, 'normal', 0.02, gpu_id)
+            self.gan2_3 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
 
-                self.gan2_3.load_state_dict(
-                    torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source3 + '.pth',
-                               map_location=torch.device(self.device)))
-                self.gan2_3.eval()
+            self.gan2_3.load_state_dict(torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source3 + '.pth',
+                                                   map_location=torch.device(self.device)))
+            self.gan2_3.eval()
 
-                self.gan3_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
-                                       False, 'normal', 0.02, gpu_id)
+            self.gan3_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
 
-                self.gan3_1.load_state_dict(
-                    torch.load('./domainbed/cyclegan/weights/PACS/' + source3 + '2' + source1 + '.pth',
-                               map_location=torch.device(self.device)))
-                self.gan3_1.eval()
+            self.gan3_1.load_state_dict(torch.load('./domainbed/cyclegan/weights/PACS/' + source3 + '2' + source1 + '.pth',
+                                                   map_location=torch.device(self.device)))
+            self.gan3_1.eval()
 
-                self.gan3_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
-                                       False, 'normal', 0.02, gpu_id)
+            self.gan3_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
 
-                self.gan3_2.load_state_dict(
-                    torch.load('./domainbed/cyclegan/weights/PACS/' + source3 + '2' + source2 + '.pth',
-                               map_location=torch.device(self.device)))
-                self.gan3_2.eval()
-            elif len(self.sources) == 2:
-                source1, source2 = get_sources(hparams["dataset"], hparams["test_envs"])
-                self.source1 = source1
-                self.source2 = source2
+            self.gan3_2.load_state_dict(torch.load('./domainbed/cyclegan/weights/PACS/' + source3 + '2' + source2 + '.pth',
+                                                   map_location=torch.device(self.device)))
+            self.gan3_2.eval()
+        elif len(self.sources) == 2:
+            source1, source2 = get_sources(hparams["dataset"], hparams["test_envs"])
+            self.source1 = source1
+            self.source2 = source2
 
-                self.gan1_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
-                                       False, 'normal', 0.02, gpu_id)
+            self.gan1_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
 
-                self.gan1_2.load_state_dict(
-                    torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source2 + '.pth',
-                               map_location=torch.device(self.device)))
-                self.gan1_2.eval()
+            self.gan1_2.load_state_dict(
+                torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source2 + '.pth',
+                           map_location=torch.device(self.device)))
+            self.gan1_2.eval()
 
-                self.gan2_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
-                                       False, 'normal', 0.02, gpu_id)
+            self.gan2_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
 
-                self.gan2_1.load_state_dict(
-                    torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source1 + '.pth',
-                               map_location=torch.device(self.device)))
-                self.gan2_1.eval()
-            else:
-                raise NotImplementedError
+            self.gan2_1.load_state_dict(
+                torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source1 + '.pth',
+                           map_location=torch.device(self.device)))
+            self.gan2_1.eval()
+        else:
+            raise NotImplementedError
 
-    def update(self, minibatches, unlabeled=None):
-        norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
-        if self.hparams["dataset"] == 'PACS' and self.hparams["gan_transform"]:
+    def update(self, minibatches, unlabeled=None, warmup=False):
+        # all_x = torch.cat([x for x, y in minibatches])
+        # all_y = torch.cat([y for x, y in minibatches])
+        # ENVIRONMENTS = ["A", "C", "P", "S"]
+        if self.dataset == 'PACS':
             if len(self.sources) == 3:
                 b1, b2, b3 = minibatches
                 x_1, y_task_1 = b1
@@ -245,96 +450,79 @@ class GANERM(Algorithm):
                 x_3, y_task_3 = b3
 
                 # GAN TRANSFORMATIONS
-                alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
+                norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
-                first_half = np.random.uniform() < 0.5
-
+                alpha, beta, gamma = np.round(np.random.dirichlet(np.ones(3)), 2)
+                p = 0.0
                 t_idx = int(self.hparams['batch_size'] / 2)
-
-                if first_half:
-                    ## ONLY TRANSFORM FIRST HALF OF BATCH
-                    x_1[:t_idx] = (x_1[:t_idx] + (alpha * self.gan1_2(x_1[:t_idx]))
-                                   + (beta * self.gan1_3(x_1[:t_idx])))
+                if not warmup:
+                    ## TRANSFORM THE WHOLE BATCH
+                    x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx])) + (gamma * self.gan1_3(x_1[:t_idx]))
                     x_1[:t_idx].detach()
                     x_1[:t_idx] = norm(x_1[:t_idx])
 
-                    x_2[:t_idx] = (x_2[:t_idx] + (alpha * self.gan2_1(x_2[:t_idx]))
-                                   + (beta * self.gan2_3(x_2[:t_idx])))
+                    x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + (beta * x_2[:t_idx]) + (gamma * self.gan2_3(x_2[:t_idx]))
                     x_2[:t_idx].detach()
                     x_2[:t_idx] = norm(x_2[:t_idx])
 
-                    x_3[:t_idx] = (x_3[:t_idx] + (alpha * self.gan3_1(x_3[:t_idx]))
-                                   + (beta * self.gan3_2(x_3[:t_idx])))
+                    x_3[:t_idx] = (alpha * self.gan3_1(x_3[:t_idx])) + (beta * self.gan3_2(x_3[:t_idx])) + (gamma * x_3[:t_idx])
                     x_3[:t_idx].detach()
                     x_3[:t_idx] = norm(x_3[:t_idx])
-                else:
-                    ## ONLY TRANSFORM SECOND HALF OF BATCH
-                    x_1[t_idx:] = (x_1[t_idx:] + (alpha * self.gan1_2(x_1[t_idx:]))
-                                   + (beta * self.gan1_3(x_1[t_idx:])))
-                    x_1[t_idx:].detach()
-                    x_1[t_idx:] = norm(x_1[t_idx:])
-
-                    x_2[t_idx:] = (x_2[t_idx:] + (alpha * self.gan2_1(x_2[t_idx:]))
-                                   + (beta * self.gan2_3(x_2[t_idx:])))
-                    x_2[t_idx:].detach()
-                    x_2[t_idx:] = norm(x_2[t_idx:])
-
-                    x_3[t_idx:] = (x_3[t_idx:] + (alpha * self.gan3_1(x_3[t_idx:]))
-                                   + (beta * self.gan3_2(x_3[t_idx:])))
-                    x_3[t_idx:].detach()
-                    x_3[t_idx:] = norm(x_3[t_idx:])
+                    p = 0.01
 
                 all_x = torch.cat((x_1.detach(), x_2.detach(), x_3.detach()), dim=0)
                 all_y = torch.cat((y_task_1, y_task_2, y_task_3), dim=0)
+
+                # Compute features
+                features = self.featurizer(all_x)
+                all_y_hat = self.classifier(features)
             elif len(self.sources) == 2:
                 b1, b2 = minibatches
                 x_1, y_task_1 = b1
                 x_2, y_task_2 = b2
 
-                first_half = np.random.uniform() < 0.5
-
-                t_idx = int(len(x_1) / 2)
                 # GAN TRANSFORMATIONS
-                alpha = np.round(np.random.random(), 2)
+                norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
-                if first_half:
-                    ## ONLY TRANSFORM FIRST HALF OF BATCH
-                    x_1[:t_idx] = (x_1[:t_idx] + (alpha * self.gan1_2(x_1[:t_idx])))
-                    x_1[:t_idx].detach()
-                    x_1[:t_idx] = norm(x_1[:t_idx])
+                alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
+                p = 0.0
+                if not warmup:
+                    ## TRANSFORM THE WHOLE BATCH
+                    x_1 = (alpha * x_1) + (beta * self.gan1_2(x_1))
+                    x_1.detach()
+                    x_1 = norm(x_1)
 
-                    x_2[:t_idx] = (x_2[:t_idx] + (alpha * self.gan2_1(x_2[:t_idx])))
-                    x_2[:t_idx].detach()
-                    x_2[:t_idx] = norm(x_2[:t_idx])
-                else:
-                    ## ONLY TRANSFORM SECOND HALF OF BATCH
-                    x_1[t_idx:] = (x_1[t_idx:] + (alpha * self.gan1_2(x_1[t_idx:])))
-                    x_1[t_idx:].detach()
-                    x_1[t_idx:] = norm(x_1[t_idx:])
+                    x_2 = (alpha * self.gan2_1(x_2)) + (beta * x_2)
+                    x_2.detach()
+                    x_2 = norm(x_2)
 
-                    x_2[t_idx:] = (x_2[t_idx:] + (alpha * self.gan2_1(x_2[t_idx:])))
-                    x_2[t_idx:].detach()
-                    x_2[t_idx:] = norm(x_2[t_idx:])
+                    p = 0.01
 
                 all_x = torch.cat((x_1.detach(), x_2.detach()), dim=0)
                 all_y = torch.cat((y_task_1, y_task_2), dim=0)
+
+                # Compute features
+                features = self.featurizer(all_x)
+                all_y_hat = self.classifier(features)
             else:
                 raise NotImplementedError
-            loss = F.cross_entropy(self.predict(all_x), all_y)
+
+            ce_loss = F.cross_entropy(all_y_hat, all_y)
+            # cont_loss = -p * cyclemix_contra_loss(features, all_y, 1)
+
+            loss = ce_loss # + cont_loss
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            return {'loss': loss.item()}
         else:
-            all_x = torch.cat([x for x, y in minibatches])
-            all_y = torch.cat([y for x, y in minibatches])
-            loss = F.cross_entropy(self.predict(all_x), all_y)
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        return {'loss': loss.item()}
+            raise NotImplementedError("Dataset not implemented for GAN ERM yet")
 
     def predict(self, x):
-        return self.network(x)
 
+        return self.classifier(self.featurizer(x))
 
 class Fish(Algorithm):
     """
