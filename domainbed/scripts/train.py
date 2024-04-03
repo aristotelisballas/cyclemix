@@ -25,6 +25,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Domain generalization')
     parser.add_argument('--lr', type=float)
     parser.add_argument('--batch_size', type=int)
+    parser.add_argument('--gan_transform', type=int, default=0)
     parser.add_argument('--data_dir', type=str)
     parser.add_argument('--dataset', type=str, default="RotatedMNIST")
     parser.add_argument('--algorithm', type=str, default="ERM")
@@ -86,9 +87,9 @@ if __name__ == "__main__":
         hparams['batch_size'] = args.batch_size
     if args.lr is not None:
         hparams['lr'] = args.lr
-    if args.algorithm in ["CYCLEMIX"]:
-        hparams['dataset'] = args.dataset
-        hparams['test_envs'] = args.test_envs
+    hparams['dataset'] = args.dataset
+    hparams['test_envs'] = args.test_envs
+    hparams['gan_augment'] = (args.gan_transform == 0)
     print('HParams:')
     for k, v in sorted(hparams.items()):
         print('\t{}: {}'.format(k, v))
@@ -222,7 +223,7 @@ if __name__ == "__main__":
                 for x,_ in next(uda_minibatches_iterator)]
         else:
             uda_device = None
-        if args.algorithm != 'CYCLMIX':
+        if args.algorithm != 'CYCLEMIX':
             step_vals = algorithm.update(minibatches_device, uda_device)
         else:
             if (step / steps_per_epoch) < 15:
