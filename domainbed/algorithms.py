@@ -438,11 +438,12 @@ class GANERM(Algorithm):
         else:
             raise NotImplementedError
 
-    def update(self, minibatches, unlabeled=None, warmup=False):
+    def update(self, minibatches, unlabeled=None):
         # all_x = torch.cat([x for x, y in minibatches])
         # all_y = torch.cat([y for x, y in minibatches])
         # ENVIRONMENTS = ["A", "C", "P", "S"]
         t_idx = int(self.hparams['batch_size'] / 2)
+        first_half = np.random.uniform() < 0.5
 
         if self.dataset == 'PACS':
             if len(self.sources) == 3:
@@ -455,8 +456,8 @@ class GANERM(Algorithm):
                 norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
                 alpha, beta, gamma = np.round(np.random.dirichlet(np.ones(3)), 2)
-                p = 0.0
-                if not warmup:
+
+                if first_half:
                     ## TRANSFORM THE WHOLE BATCH
                     x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx])) + (gamma * self.gan1_3(x_1[:t_idx]))
                     x_1[:t_idx].detach()
@@ -469,7 +470,19 @@ class GANERM(Algorithm):
                     x_3[:t_idx] = (alpha * self.gan3_1(x_3[:t_idx])) + (beta * self.gan3_2(x_3[:t_idx])) + (gamma * x_3[:t_idx])
                     x_3[:t_idx].detach()
                     x_3[:t_idx] = norm(x_3[:t_idx])
-                    p = 0.01
+                else:
+                    ## TRANSFORM THE WHOLE BATCH
+                    x_1[t_idx:] = (alpha * x_1[t_idx:]) + (beta * self.gan1_2(x_1[t_idx:])) + (gamma * self.gan1_3(x_1[t_idx:]))
+                    x_1[t_idx:].detach()
+                    x_1[t_idx:] = norm(x_1[t_idx:])
+
+                    x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + (beta * x_2[t_idx:]) + (gamma * self.gan2_3(x_2[t_idx:]))
+                    x_2[t_idx:].detach()
+                    x_2[t_idx:] = norm(x_2[t_idx:])
+
+                    x_3[t_idx:] = (alpha * self.gan3_1(x_3[t_idx:])) + (beta * self.gan3_2(x_3[t_idx:])) + (gamma * x_3[t_idx:])
+                    x_3[t_idx:].detach()
+                    x_3[t_idx:] = norm(x_3[t_idx:])
 
                 all_x = torch.cat((x_1.detach(), x_2.detach(), x_3.detach()), dim=0)
                 all_y = torch.cat((y_task_1, y_task_2, y_task_3), dim=0)
@@ -486,8 +499,8 @@ class GANERM(Algorithm):
                 norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
                 alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
-                p = 0.0
-                if not warmup:
+
+                if first_half:
                     ## TRANSFORM THE WHOLE BATCH
                     x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx]))
                     x_1[:t_idx].detach()
@@ -497,7 +510,15 @@ class GANERM(Algorithm):
                     x_2[:t_idx].detach()
                     x_2[:t_idx] = norm(x_2[:t_idx])
 
-                    p = 0.01
+                else:
+                    ## TRANSFORM THE WHOLE BATCH
+                    x_1[t_idx:] = (alpha * x_1[t_idx:]) + (beta * self.gan1_2(x_1[t_idx:]))
+                    x_1[t_idx:].detach()
+                    x_1[t_idx:] = norm(x_1[t_idx:])
+
+                    x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + (beta * x_2[t_idx:])
+                    x_2[t_idx:].detach()
+                    x_2[t_idx:] = norm(x_2[t_idx:])
 
                 all_x = torch.cat((x_1.detach(), x_2.detach()), dim=0)
                 all_y = torch.cat((y_task_1, y_task_2), dim=0)
