@@ -350,7 +350,7 @@ class GANERM(Algorithm):
             num_classes,
             self.hparams['nonlinear_classifier'])
 
-        # self.network = nn.Sequential(self.featurizer, self.classifier)
+        self.network = nn.Sequential(self.featurizer, self.classifier)
         self.optimizer = torch.optim.Adam(
             self.network.parameters(),
             lr=self.hparams["lr"],
@@ -567,15 +567,15 @@ class GANERM(Algorithm):
                 all_y = torch.cat((y_task_1, y_task_2), dim=0)
 
                 # Compute features
-                features = self.featurizer(all_x)
-                all_y_hat = self.classifier(features)
+                # features = self.featurizer(all_x)
+                # all_y_hat = self.network(all_x)
             else:
                 raise NotImplementedError
 
-            ce_loss = F.cross_entropy(all_y_hat, all_y)
+            loss = F.cross_entropy(self.predict(all_x), all_y)
             # cont_loss = -p * cyclemix_contra_loss(features, all_y, 1)
 
-            loss = ce_loss # + cont_loss
+            # loss = ce_loss # + cont_loss
 
             self.optimizer.zero_grad()
             loss.backward()
