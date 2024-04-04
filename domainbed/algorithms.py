@@ -29,6 +29,7 @@ from domainbed.lib.cyclemix_loss import cyclemix_contra_loss
 
 ALGORITHMS = [
     'ERM',
+    'GANERM'
     'CYCLEMIX'
     'Fish',
     'IRM',
