@@ -343,7 +343,7 @@ class GANERM(Algorithm):
 
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         super(GANERM, self).__init__(input_shape, num_classes, num_domains,
-                                       hparams)
+                                     hparams)
         self.featurizer = networks.Featurizer(input_shape, self.hparams)
         self.classifier = networks.Classifier(
             self.featurizer.n_outputs,
@@ -359,8 +359,10 @@ class GANERM(Algorithm):
         self.batch_size = hparams['batch_size']
 
         # GAN AUGEMENTATION
-        self.device = next(self.featurizer.parameters()).device
+        self.device = next(self.network.parameters()).device
         self.dataset = hparams["dataset"]
+
+        self.gan_transform = hparams["gan_transform"]
 
         if torch.cuda.is_available():
             gpu_id = [0]
@@ -445,145 +447,147 @@ class GANERM(Algorithm):
         # ENVIRONMENTS = ["A", "C", "P", "S"]
         t_idx = int(self.hparams['batch_size'] / 2)
         first_half = np.random.uniform() < 0.5
+        if self.gan_transform:
+            if self.dataset == 'PACS':
+                if len(self.sources) == 3:
+                    b1, b2, b3 = minibatches
+                    x_1, y_task_1 = b1
+                    x_2, y_task_2 = b2
+                    x_3, y_task_3 = b3
 
-        if self.dataset == 'PACS':
-            if len(self.sources) == 3:
-                b1, b2, b3 = minibatches
-                x_1, y_task_1 = b1
-                x_2, y_task_2 = b2
-                x_3, y_task_3 = b3
+                    # GAN TRANSFORMATIONS
+                    norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
-                # GAN TRANSFORMATIONS
-                norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+                    alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
 
-                alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
+                    if first_half:
+                        ## TRANSFORM THE WHOLE BATCH
+                        # x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx])) + (gamma * self.gan1_3(x_1[:t_idx]))
+                        # x_1[:t_idx].detach()
+                        # x_1[:t_idx] = norm(x_1[:t_idx])
+                        #
+                        # x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + (beta * x_2[:t_idx]) + (gamma * self.gan2_3(x_2[:t_idx]))
+                        # x_2[:t_idx].detach()
+                        # x_2[:t_idx] = norm(x_2[:t_idx])
+                        #
+                        # x_3[:t_idx] = (alpha * self.gan3_1(x_3[:t_idx])) + (beta * self.gan3_2(x_3[:t_idx])) + (gamma * x_3[:t_idx])
+                        # x_3[:t_idx].detach()
+                        # x_3[:t_idx] = norm(x_3[:t_idx])
 
-                if first_half:
-                    ## TRANSFORM THE WHOLE BATCH
-                    # x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx])) + (gamma * self.gan1_3(x_1[:t_idx]))
-                    # x_1[:t_idx].detach()
-                    # x_1[:t_idx] = norm(x_1[:t_idx])
-                    #
-                    # x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + (beta * x_2[:t_idx]) + (gamma * self.gan2_3(x_2[:t_idx]))
-                    # x_2[:t_idx].detach()
-                    # x_2[:t_idx] = norm(x_2[:t_idx])
-                    #
-                    # x_3[:t_idx] = (alpha * self.gan3_1(x_3[:t_idx])) + (beta * self.gan3_2(x_3[:t_idx])) + (gamma * x_3[:t_idx])
-                    # x_3[:t_idx].detach()
-                    # x_3[:t_idx] = norm(x_3[:t_idx])
+                        x_1[:t_idx] = x_1[:t_idx] + (alpha * self.gan1_2(x_1[:t_idx])) + (beta * self.gan1_3(x_1[:t_idx]))
+                        x_1[:t_idx].detach()
+                        x_1[:t_idx] = norm(x_1[:t_idx])
 
-                    x_1[:t_idx] = x_1[:t_idx] + (alpha * self.gan1_2(x_1[:t_idx])) + (beta * self.gan1_3(x_1[:t_idx]))
-                    x_1[:t_idx].detach()
-                    x_1[:t_idx] = norm(x_1[:t_idx])
+                        x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + x_2[:t_idx] + (beta * self.gan2_3(x_2[:t_idx]))
+                        x_2[:t_idx].detach()
+                        x_2[:t_idx] = norm(x_2[:t_idx])
 
-                    x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + x_2[:t_idx] + (beta * self.gan2_3(x_2[:t_idx]))
-                    x_2[:t_idx].detach()
-                    x_2[:t_idx] = norm(x_2[:t_idx])
+                        x_3[:t_idx] = (alpha * self.gan3_1(x_3[:t_idx])) + (beta * self.gan3_2(x_3[:t_idx])) + x_3[:t_idx]
+                        x_3[:t_idx].detach()
+                        x_3[:t_idx] = norm(x_3[:t_idx])
 
-                    x_3[:t_idx] = (alpha * self.gan3_1(x_3[:t_idx])) + (beta * self.gan3_2(x_3[:t_idx])) + x_3[:t_idx]
-                    x_3[:t_idx].detach()
-                    x_3[:t_idx] = norm(x_3[:t_idx])
+                    else:
+                        ## TRANSFORM THE WHOLE BATCH
+                        # x_1[t_idx:] = (alpha * x_1[t_idx:]) + (beta * self.gan1_2(x_1[t_idx:])) + (gamma * self.gan1_3(x_1[t_idx:]))
+                        # x_1[t_idx:].detach()
+                        # x_1[t_idx:] = norm(x_1[t_idx:])
+                        #
+                        # x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + (beta * x_2[t_idx:]) + (gamma * self.gan2_3(x_2[t_idx:]))
+                        # x_2[t_idx:].detach()
+                        # x_2[t_idx:] = norm(x_2[t_idx:])
+                        #
+                        # x_3[t_idx:] = (alpha * self.gan3_1(x_3[t_idx:])) + (beta * self.gan3_2(x_3[t_idx:])) + (gamma * x_3[t_idx:])
+                        # x_3[t_idx:].detach()
+                        # x_3[t_idx:] = norm(x_3[t_idx:])
 
+                        x_1[t_idx:] = x_1[t_idx:] + (alpha * self.gan1_2(x_1[t_idx:])) + (beta * self.gan1_3(x_1[t_idx:]))
+                        x_1[t_idx:].detach()
+                        x_1[t_idx:] = norm(x_1[t_idx:])
+
+                        x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + x_2[t_idx:] + (beta * self.gan2_3(x_2[t_idx:]))
+                        x_2[t_idx:].detach()
+                        x_2[t_idx:] = norm(x_2[t_idx:])
+
+                        x_3[t_idx:] = (alpha * self.gan3_1(x_3[t_idx:])) + (beta * self.gan3_2(x_3[t_idx:])) + x_3[t_idx:]
+                        x_3[t_idx:].detach()
+                        x_3[t_idx:] = norm(x_3[t_idx:])
+
+                    all_x = torch.cat((x_1.detach(), x_2.detach(), x_3.detach()), dim=0)
+                    all_y = torch.cat((y_task_1, y_task_2, y_task_3), dim=0)
+
+                    # Compute features
+                    features = self.featurizer(all_x)
+                    all_y_hat = self.classifier(features)
+                elif len(self.sources) == 2:
+                    b1, b2 = minibatches
+                    x_1, y_task_1 = b1
+                    x_2, y_task_2 = b2
+
+                    # GAN TRANSFORMATIONS
+                    norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+
+                    # alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
+                    alpha = np.round(np.random.random(), 2)
+
+                    if first_half:
+                        ## TRANSFORM THE WHOLE BATCH
+                        # x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx]))
+                        # x_1[:t_idx].detach()
+                        # x_1[:t_idx] = norm(x_1[:t_idx])
+                        #
+                        # x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + (beta * x_2[:t_idx])
+                        # x_2[:t_idx].detach()
+                        # x_2[:t_idx] = norm(x_2[:t_idx])
+
+                        x_1[:t_idx] = x_1[:t_idx] + (alpha * self.gan1_2(x_1[:t_idx]))
+                        x_1[:t_idx].detach()
+                        x_1[:t_idx] = norm(x_1[:t_idx])
+
+                        x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + x_2[:t_idx]
+                        x_2[:t_idx].detach()
+                        x_2[:t_idx] = norm(x_2[:t_idx])
+
+                    else:
+                        ## TRANSFORM THE WHOLE BATCH
+                        # x_1[t_idx:] = (alpha * x_1[t_idx:]) + (beta * self.gan1_2(x_1[t_idx:]))
+                        # x_1[t_idx:].detach()
+                        # x_1[t_idx:] = norm(x_1[t_idx:])
+                        #
+                        # x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + (beta * x_2[t_idx:])
+                        # x_2[t_idx:].detach()
+                        # x_2[t_idx:] = norm(x_2[t_idx:])
+
+                        x_1[t_idx:] = x_1[t_idx:] + (alpha * self.gan1_2(x_1[t_idx:]))
+                        x_1[t_idx:].detach()
+                        x_1[t_idx:] = norm(x_1[t_idx:])
+
+                        x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + x_2[t_idx:]
+                        x_2[t_idx:].detach()
+                        x_2[t_idx:] = norm(x_2[t_idx:])
+
+                    all_x = torch.cat((x_1.detach(), x_2.detach()), dim=0)
+                    all_y = torch.cat((y_task_1, y_task_2), dim=0)
+
+                    # Compute features
+                    # features = self.featurizer(all_x)
+                    # all_y_hat = self.network(all_x)
                 else:
-                    ## TRANSFORM THE WHOLE BATCH
-                    # x_1[t_idx:] = (alpha * x_1[t_idx:]) + (beta * self.gan1_2(x_1[t_idx:])) + (gamma * self.gan1_3(x_1[t_idx:]))
-                    # x_1[t_idx:].detach()
-                    # x_1[t_idx:] = norm(x_1[t_idx:])
-                    #
-                    # x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + (beta * x_2[t_idx:]) + (gamma * self.gan2_3(x_2[t_idx:]))
-                    # x_2[t_idx:].detach()
-                    # x_2[t_idx:] = norm(x_2[t_idx:])
-                    #
-                    # x_3[t_idx:] = (alpha * self.gan3_1(x_3[t_idx:])) + (beta * self.gan3_2(x_3[t_idx:])) + (gamma * x_3[t_idx:])
-                    # x_3[t_idx:].detach()
-                    # x_3[t_idx:] = norm(x_3[t_idx:])
-
-                    x_1[t_idx:] = x_1[t_idx:] + (alpha * self.gan1_2(x_1[t_idx:])) + (beta * self.gan1_3(x_1[t_idx:]))
-                    x_1[t_idx:].detach()
-                    x_1[t_idx:] = norm(x_1[t_idx:])
-
-                    x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + x_2[t_idx:] + (beta * self.gan2_3(x_2[t_idx:]))
-                    x_2[t_idx:].detach()
-                    x_2[t_idx:] = norm(x_2[t_idx:])
-
-                    x_3[t_idx:] = (alpha * self.gan3_1(x_3[t_idx:])) + (beta * self.gan3_2(x_3[t_idx:])) + x_3[t_idx:]
-                    x_3[t_idx:].detach()
-                    x_3[t_idx:] = norm(x_3[t_idx:])
-
-                all_x = torch.cat((x_1.detach(), x_2.detach(), x_3.detach()), dim=0)
-                all_y = torch.cat((y_task_1, y_task_2, y_task_3), dim=0)
-
-                # Compute features
-                features = self.featurizer(all_x)
-                all_y_hat = self.classifier(features)
-            elif len(self.sources) == 2:
-                b1, b2 = minibatches
-                x_1, y_task_1 = b1
-                x_2, y_task_2 = b2
-
-                # GAN TRANSFORMATIONS
-                norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
-
-                # alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
-                alpha = np.round(np.random.random(), 2)
-
-                if first_half:
-                    ## TRANSFORM THE WHOLE BATCH
-                    # x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx]))
-                    # x_1[:t_idx].detach()
-                    # x_1[:t_idx] = norm(x_1[:t_idx])
-                    #
-                    # x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + (beta * x_2[:t_idx])
-                    # x_2[:t_idx].detach()
-                    # x_2[:t_idx] = norm(x_2[:t_idx])
-
-                    x_1[:t_idx] = x_1[:t_idx] + (alpha * self.gan1_2(x_1[:t_idx]))
-                    x_1[:t_idx].detach()
-                    x_1[:t_idx] = norm(x_1[:t_idx])
-
-                    x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + x_2[:t_idx]
-                    x_2[:t_idx].detach()
-                    x_2[:t_idx] = norm(x_2[:t_idx])
-
-                else:
-                    ## TRANSFORM THE WHOLE BATCH
-                    # x_1[t_idx:] = (alpha * x_1[t_idx:]) + (beta * self.gan1_2(x_1[t_idx:]))
-                    # x_1[t_idx:].detach()
-                    # x_1[t_idx:] = norm(x_1[t_idx:])
-                    #
-                    # x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + (beta * x_2[t_idx:])
-                    # x_2[t_idx:].detach()
-                    # x_2[t_idx:] = norm(x_2[t_idx:])
-
-                    x_1[t_idx:] = x_1[t_idx:] + (alpha * self.gan1_2(x_1[t_idx:]))
-                    x_1[t_idx:].detach()
-                    x_1[t_idx:] = norm(x_1[t_idx:])
-
-                    x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + x_2[t_idx:]
-                    x_2[t_idx:].detach()
-                    x_2[t_idx:] = norm(x_2[t_idx:])
-
-                all_x = torch.cat((x_1.detach(), x_2.detach()), dim=0)
-                all_y = torch.cat((y_task_1, y_task_2), dim=0)
-
-                # Compute features
-                # features = self.featurizer(all_x)
-                # all_y_hat = self.network(all_x)
+                    raise NotImplementedError
             else:
-                raise NotImplementedError
-
-            loss = F.cross_entropy(self.predict(all_x), all_y)
-            # cont_loss = -p * cyclemix_contra_loss(features, all_y, 1)
-
-            # loss = ce_loss # + cont_loss
-
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-
-            return {'loss': loss.item()}
+                raise NotImplementedError("Dataset not implemented for GAN ERM yet")
         else:
-            raise NotImplementedError("Dataset not implemented for GAN ERM yet")
+            all_x = torch.cat([x for x, y in minibatches])
+            all_y = torch.cat([y for x, y in minibatches])
+        loss = F.cross_entropy(self.predict(all_x), all_y)
+        # cont_loss = -p * cyclemix_contra_loss(features, all_y, 1)
+
+        # loss = ce_loss # + cont_loss
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {'loss': loss.item()}
 
     def predict(self, x):
 
