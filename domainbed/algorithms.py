@@ -455,32 +455,57 @@ class GANERM(Algorithm):
                 # GAN TRANSFORMATIONS
                 norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
-                alpha, beta, gamma = np.round(np.random.dirichlet(np.ones(3)), 2)
+                alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
 
                 if first_half:
                     ## TRANSFORM THE WHOLE BATCH
-                    x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx])) + (gamma * self.gan1_3(x_1[:t_idx]))
+                    # x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx])) + (gamma * self.gan1_3(x_1[:t_idx]))
+                    # x_1[:t_idx].detach()
+                    # x_1[:t_idx] = norm(x_1[:t_idx])
+                    #
+                    # x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + (beta * x_2[:t_idx]) + (gamma * self.gan2_3(x_2[:t_idx]))
+                    # x_2[:t_idx].detach()
+                    # x_2[:t_idx] = norm(x_2[:t_idx])
+                    #
+                    # x_3[:t_idx] = (alpha * self.gan3_1(x_3[:t_idx])) + (beta * self.gan3_2(x_3[:t_idx])) + (gamma * x_3[:t_idx])
+                    # x_3[:t_idx].detach()
+                    # x_3[:t_idx] = norm(x_3[:t_idx])
+
+                    x_1[:t_idx] = x_1[:t_idx] + (alpha * self.gan1_2(x_1[:t_idx])) + (beta * self.gan1_3(x_1[:t_idx]))
                     x_1[:t_idx].detach()
                     x_1[:t_idx] = norm(x_1[:t_idx])
 
-                    x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + (beta * x_2[:t_idx]) + (gamma * self.gan2_3(x_2[:t_idx]))
+                    x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + x_2[:t_idx] + (beta * self.gan2_3(x_2[:t_idx]))
                     x_2[:t_idx].detach()
                     x_2[:t_idx] = norm(x_2[:t_idx])
 
-                    x_3[:t_idx] = (alpha * self.gan3_1(x_3[:t_idx])) + (beta * self.gan3_2(x_3[:t_idx])) + (gamma * x_3[:t_idx])
+                    x_3[:t_idx] = (alpha * self.gan3_1(x_3[:t_idx])) + (beta * self.gan3_2(x_3[:t_idx])) + x_3[:t_idx]
                     x_3[:t_idx].detach()
                     x_3[:t_idx] = norm(x_3[:t_idx])
+
                 else:
                     ## TRANSFORM THE WHOLE BATCH
-                    x_1[t_idx:] = (alpha * x_1[t_idx:]) + (beta * self.gan1_2(x_1[t_idx:])) + (gamma * self.gan1_3(x_1[t_idx:]))
+                    # x_1[t_idx:] = (alpha * x_1[t_idx:]) + (beta * self.gan1_2(x_1[t_idx:])) + (gamma * self.gan1_3(x_1[t_idx:]))
+                    # x_1[t_idx:].detach()
+                    # x_1[t_idx:] = norm(x_1[t_idx:])
+                    #
+                    # x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + (beta * x_2[t_idx:]) + (gamma * self.gan2_3(x_2[t_idx:]))
+                    # x_2[t_idx:].detach()
+                    # x_2[t_idx:] = norm(x_2[t_idx:])
+                    #
+                    # x_3[t_idx:] = (alpha * self.gan3_1(x_3[t_idx:])) + (beta * self.gan3_2(x_3[t_idx:])) + (gamma * x_3[t_idx:])
+                    # x_3[t_idx:].detach()
+                    # x_3[t_idx:] = norm(x_3[t_idx:])
+
+                    x_1[t_idx:] = x_1[t_idx:] + (alpha * self.gan1_2(x_1[t_idx:])) + (beta * self.gan1_3(x_1[t_idx:]))
                     x_1[t_idx:].detach()
                     x_1[t_idx:] = norm(x_1[t_idx:])
 
-                    x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + (beta * x_2[t_idx:]) + (gamma * self.gan2_3(x_2[t_idx:]))
+                    x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + x_2[t_idx:] + (beta * self.gan2_3(x_2[t_idx:]))
                     x_2[t_idx:].detach()
                     x_2[t_idx:] = norm(x_2[t_idx:])
 
-                    x_3[t_idx:] = (alpha * self.gan3_1(x_3[t_idx:])) + (beta * self.gan3_2(x_3[t_idx:])) + (gamma * x_3[t_idx:])
+                    x_3[t_idx:] = (alpha * self.gan3_1(x_3[t_idx:])) + (beta * self.gan3_2(x_3[t_idx:])) + x_3[t_idx:]
                     x_3[t_idx:].detach()
                     x_3[t_idx:] = norm(x_3[t_idx:])
 
@@ -498,25 +523,42 @@ class GANERM(Algorithm):
                 # GAN TRANSFORMATIONS
                 norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
-                alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
+                # alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
+                alpha = np.round(np.random.random(), 2)
 
                 if first_half:
                     ## TRANSFORM THE WHOLE BATCH
-                    x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx]))
+                    # x_1[:t_idx] = (alpha * x_1[:t_idx]) + (beta * self.gan1_2(x_1[:t_idx]))
+                    # x_1[:t_idx].detach()
+                    # x_1[:t_idx] = norm(x_1[:t_idx])
+                    #
+                    # x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + (beta * x_2[:t_idx])
+                    # x_2[:t_idx].detach()
+                    # x_2[:t_idx] = norm(x_2[:t_idx])
+
+                    x_1[:t_idx] = x_1[:t_idx] + (alpha * self.gan1_2(x_1[:t_idx]))
                     x_1[:t_idx].detach()
                     x_1[:t_idx] = norm(x_1[:t_idx])
 
-                    x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + (beta * x_2[:t_idx])
+                    x_2[:t_idx] = (alpha * self.gan2_1(x_2[:t_idx])) + x_2[:t_idx]
                     x_2[:t_idx].detach()
                     x_2[:t_idx] = norm(x_2[:t_idx])
 
                 else:
                     ## TRANSFORM THE WHOLE BATCH
-                    x_1[t_idx:] = (alpha * x_1[t_idx:]) + (beta * self.gan1_2(x_1[t_idx:]))
+                    # x_1[t_idx:] = (alpha * x_1[t_idx:]) + (beta * self.gan1_2(x_1[t_idx:]))
+                    # x_1[t_idx:].detach()
+                    # x_1[t_idx:] = norm(x_1[t_idx:])
+                    #
+                    # x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + (beta * x_2[t_idx:])
+                    # x_2[t_idx:].detach()
+                    # x_2[t_idx:] = norm(x_2[t_idx:])
+
+                    x_1[t_idx:] = x_1[t_idx:] + (alpha * self.gan1_2(x_1[t_idx:]))
                     x_1[t_idx:].detach()
                     x_1[t_idx:] = norm(x_1[t_idx:])
 
-                    x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + (beta * x_2[t_idx:])
+                    x_2[t_idx:] = (alpha * self.gan2_1(x_2[t_idx:])) + x_2[t_idx:]
                     x_2[t_idx:].detach()
                     x_2[t_idx:] = norm(x_2[t_idx:])
 
