@@ -351,8 +351,8 @@ class GANERM(Algorithm):
             self.hparams['nonlinear_classifier'])
 
         # self.network = nn.Sequential(self.featurizer, self.classifier)
-        self.optimizer = torch.optim.SGD(
-            list(self.featurizer.parameters()) + list(self.classifier.parameters()),
+        self.optimizer = torch.optim.Adam(
+            self.network.parameters(),
             lr=self.hparams["lr"],
             weight_decay=self.hparams['weight_decay']
         )
