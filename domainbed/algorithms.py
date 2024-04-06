@@ -623,6 +623,8 @@ class GANERMNEW(Algorithm):
 
         self.gan_transform = hparams["gan_transform"]
 
+        self.device = next(self.network.parameters()).device
+        hparams['device'] = self.device
         self.cyclemixLayer = networks.CycleMix(hparams)
 
     def update(self, minibatches, unlabeled=None):

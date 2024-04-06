@@ -23,6 +23,7 @@ class CycleMix(nn.Module):
             gpu_id = [0]
         else:
             gpu_id = []
+        self.device = hparams['device']
         self.sources = get_sources(hparams["dataset"], hparams["test_envs"])
         if len(self.sources) == 3:
             source1, source2, source3 = get_sources(hparams["dataset"], hparams["test_envs"])
