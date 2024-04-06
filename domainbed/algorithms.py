@@ -632,8 +632,9 @@ class GANERMNEW(Algorithm):
         # all_y = torch.cat([y for x, y in minibatches])
         # ENVIRONMENTS = ["A", "C", "P", "S"]
 
+        print("Passing through cyclemixlayer")
         minibatches = self.cyclemixLayer(minibatches)
-
+        print("Passed through cyclemixlayer")
         all_x = torch.cat([x for x, y in minibatches])
         all_y = torch.cat([y for x, y in minibatches])
         loss = F.cross_entropy(self.predict(all_x), all_y)
