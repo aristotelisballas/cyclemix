@@ -16,14 +16,14 @@ from domainbed.cyclegan.utils import get_sources
 
 
 class CycleMix(nn.Module):
-    def __init__(self, hparams):
+    def __init__(self, hparams, device):
         super(CycleMix, self).__init__()
 
         if torch.cuda.is_available():
             gpu_id = [0]
         else:
             gpu_id = []
-        self.device = hparams['device']
+        self.device = device
         self.sources = get_sources(hparams["dataset"], hparams["test_envs"])
         if len(self.sources) == 3:
             source1, source2, source3 = get_sources(hparams["dataset"], hparams["test_envs"])

@@ -624,8 +624,8 @@ class GANERMNEW(Algorithm):
         self.gan_transform = hparams["gan_transform"]
 
         self.device = next(self.network.parameters()).device
-        hparams['device'] = self.device
-        self.cyclemixLayer = networks.CycleMix(hparams)
+        # hparams['device'] = self.device
+        self.cyclemixLayer = networks.CycleMix(hparams, device)
 
     def update(self, minibatches, unlabeled=None):
         # all_x = torch.cat([x for x, y in minibatches])
