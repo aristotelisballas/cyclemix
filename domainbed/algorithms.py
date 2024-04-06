@@ -29,8 +29,9 @@ from domainbed.lib.cyclemix_loss import cyclemix_contra_loss
 
 ALGORITHMS = [
     'ERM',
-    'GANERM'
-    'CYCLEMIX'
+    'GANERM',
+    'GANERMNEW',
+    'CYCLEMIX',
     'Fish',
     'IRM',
     'GroupDRO',
@@ -592,6 +593,59 @@ class GANERM(Algorithm):
     def predict(self, x):
 
         return self.classifier(self.featurizer(x))
+
+
+class GANERMNEW(Algorithm):
+    """
+    CycleMIX with custom contrastive loss function
+    """
+
+    def __init__(self, input_shape, num_classes, num_domains, hparams):
+        super(GANERMNEW, self).__init__(input_shape, num_classes, num_domains,
+                                     hparams)
+        self.featurizer = networks.Featurizer(input_shape, self.hparams)
+        self.classifier = networks.Classifier(
+            self.featurizer.n_outputs,
+            num_classes,
+            self.hparams['nonlinear_classifier'])
+
+        self.network = nn.Sequential(self.featurizer, self.classifier)
+        self.optimizer = torch.optim.Adam(
+            self.network.parameters(),
+            lr=self.hparams["lr"],
+            weight_decay=self.hparams['weight_decay']
+        )
+        self.batch_size = hparams['batch_size']
+
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
+
+        self.gan_transform = hparams["gan_transform"]
+
+        self.cyclemixLayer = networks.CycleMix(hparams)
+
+    def update(self, minibatches, unlabeled=None):
+        # all_x = torch.cat([x for x, y in minibatches])
+        # all_y = torch.cat([y for x, y in minibatches])
+        # ENVIRONMENTS = ["A", "C", "P", "S"]
+
+        minibatches = self.cyclemixLayer(minibatches)
+
+        all_x = torch.cat([x for x, y in minibatches])
+        all_y = torch.cat([y for x, y in minibatches])
+        loss = F.cross_entropy(self.predict(all_x), all_y)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {'loss': loss.item()}
+
+    def predict(self, x):
+
+        return self.classifier(self.featurizer(x))
+
 
 class Fish(Algorithm):
     """

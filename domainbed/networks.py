@@ -4,9 +4,154 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models
+from torchvision import transforms
+import numpy as np
 
 from domainbed.lib import wide_resnet
 import copy
+
+# CYCLEGAN Experiments
+from domainbed.cyclegan.networks import define_G
+from domainbed.cyclegan.utils import get_sources
+
+
+class CycleMix(nn.Module):
+    def __init__(self, hparams):
+        super().__init__(CycleMix, hparams)
+
+        if torch.cuda.is_available():
+            gpu_id = [0]
+        else:
+            gpu_id = []
+        self.sources = get_sources(hparams["dataset"], hparams["test_envs"])
+        if len(self.sources) == 3:
+            source1, source2, source3 = get_sources(hparams["dataset"], hparams["test_envs"])
+
+            self.source1 = source1
+            self.source2 = source2
+            self.source3 = source3
+
+            self.gan1_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
+
+            self.gan1_2.load_state_dict(
+                torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source2 + '.pth',
+                           map_location=torch.device(self.device)))
+            self.gan1_2.eval()
+
+            self.gan1_3 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
+
+            self.gan1_3.load_state_dict(
+                torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source3 + '.pth',
+                           map_location=torch.device(self.device)))
+            self.gan1_3.eval()
+
+            self.gan2_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
+
+            self.gan2_1.load_state_dict(
+                torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source1 + '.pth',
+                           map_location=torch.device(self.device)))
+            self.gan2_1.eval()
+
+            self.gan2_3 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
+
+            self.gan2_3.load_state_dict(
+                torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source3 + '.pth',
+                           map_location=torch.device(self.device)))
+            self.gan2_3.eval()
+
+            self.gan3_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
+
+            self.gan3_1.load_state_dict(
+                torch.load('./domainbed/cyclegan/weights/PACS/' + source3 + '2' + source1 + '.pth',
+                           map_location=torch.device(self.device)))
+            self.gan3_1.eval()
+
+            self.gan3_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
+
+            self.gan3_2.load_state_dict(
+                torch.load('./domainbed/cyclegan/weights/PACS/' + source3 + '2' + source2 + '.pth',
+                           map_location=torch.device(self.device)))
+            self.gan3_2.eval()
+        elif len(self.sources) == 2:
+            source1, source2 = get_sources(hparams["dataset"], hparams["test_envs"])
+            self.source1 = source1
+            self.source2 = source2
+
+            self.gan1_2 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
+
+            self.gan1_2.load_state_dict(
+                torch.load('./domainbed/cyclegan/weights/PACS/' + source1 + '2' + source2 + '.pth',
+                           map_location=torch.device(self.device)))
+            self.gan1_2.eval()
+
+            self.gan2_1 = define_G(3, 3, 64, 'resnet_9blocks', 'instance',
+                                   False, 'normal', 0.02, gpu_id)
+
+            self.gan2_1.load_state_dict(
+                torch.load('./domainbed/cyclegan/weights/PACS/' + source2 + '2' + source1 + '.pth',
+                           map_location=torch.device(self.device)))
+            self.gan2_1.eval()
+        else:
+            raise NotImplementedError
+
+    def forward(self, x: list):
+        if len(self.sources) == 3:
+            b1, b2, b3 = x
+            x_1, y_task_1 = b1
+            x_2, y_task_2 = b2
+            x_3, y_task_3 = b3
+
+            del b1, b2, b3
+
+            # GAN TRANSFORMATIONS
+            norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+
+            alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
+
+            x_1_hat = x_1 + (alpha * self.gan1_2(x_1)) + (beta * self.gan1_3(x_1))
+            x_1_hat.detach()
+            x_1_hat = norm(x_1_hat)
+
+            x_2_hat = (alpha * self.gan2_1(x_2)) + x_2 + (beta * self.gan2_3(x_2))
+            x_2_hat.detach()
+            x_2_hat = norm(x_2)
+
+            x_3_hat = (alpha * self.gan3_1(x_3)) + (beta * self.gan3_2(x_3)) + x_3
+            x_3_hat.detach()
+            x_3_hat = norm(x_3)
+
+            return [(x_1, y_task_1), (x_2, y_task_2), (x_3, y_task_3),
+                    (x_1_hat, y_task_1), (x_2_hat, y_task_2), (x_3_hat, y_task_3)]
+
+        else:
+            b1, b2 = x
+            x_1, y_task_1 = b1
+            x_2, y_task_2 = b2
+
+            del b1, b2
+            # GAN TRANSFORMATIONS
+            norm = transforms.Compose([transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+
+            # alpha, beta = np.round(np.random.dirichlet(np.ones(2)), 2)
+            alpha = np.round(np.random.random(), 2)
+
+            x_1_hat = x_1 + (alpha * self.gan1_2(x_1))
+            x_1_hat.detach()
+            x_1_hat = norm(x_1)
+
+            x_2_hat = (alpha * self.gan2_1(x_2)) + x_2
+            x_2_hat.detach()
+            x_2_hat = norm(x_2)
+
+            return [(x_1, y_task_1), (x_2, y_task_2),
+                    (x_1_hat, y_task_1), (x_2_hat, y_task_2)]
 
 
 def remove_batch_norm_from_resnet(model):
