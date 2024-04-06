@@ -17,7 +17,7 @@ from domainbed.cyclegan.utils import get_sources
 
 class CycleMix(nn.Module):
     def __init__(self, hparams):
-        super().__init__(CycleMix, hparams)
+        super(CycleMix).__init__(hparams)
 
         if torch.cuda.is_available():
             gpu_id = [0]
