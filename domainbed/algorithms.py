@@ -116,6 +116,10 @@ class ERM(Algorithm):
         )
 
     def update(self, minibatches, unlabeled=None):
+
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
+
         all_x = torch.cat([x for x, y in minibatches])
         all_y = torch.cat([y for x, y in minibatches])
         loss = F.cross_entropy(self.predict(all_x), all_y)
@@ -718,6 +722,14 @@ class ARM(ERM):
         self.context_net = networks.ContextNet(original_input_shape)
         self.support_size = hparams['batch_size']
 
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
+        self.gan_transform = hparams["gan_transform"]
+        if self.gan_transform:
+            device = next(self.network.parameters()).device
+            self.cyclemixLayer = networks.CycleMix(hparams, device)
+
     def predict(self, x):
         batch_size, c, h, w = x.shape
         if batch_size % self.support_size == 0:
@@ -772,7 +784,17 @@ class AbstractDANN(Algorithm):
             weight_decay=self.hparams['weight_decay_g'],
             betas=(self.hparams['beta1'], 0.9))
 
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
+        self.gan_transform = hparams["gan_transform"]
+        if self.gan_transform:
+            device = next(self.network.parameters()).device
+            self.cyclemixLayer = networks.CycleMix(hparams, device)
+
     def update(self, minibatches, unlabeled=None):
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
         device = "cuda" if minibatches[0][0].is_cuda else "cpu"
         self.update_count += 1
         all_x = torch.cat([x for x, y in minibatches])
@@ -845,6 +867,14 @@ class IRM(ERM):
                                   hparams)
         self.register_buffer('update_count', torch.tensor([0]))
 
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
+        self.gan_transform = hparams["gan_transform"]
+        if self.gan_transform:
+            device = next(self.network.parameters()).device
+            self.cyclemixLayer = networks.CycleMix(hparams, device)
+
     @staticmethod
     def _irm_penalty(logits, y):
         device = "cuda" if logits[0][0].is_cuda else "cpu"
@@ -857,6 +887,10 @@ class IRM(ERM):
         return result
 
     def update(self, minibatches, unlabeled=None):
+
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
+
         device = "cuda" if minibatches[0][0].is_cuda else "cpu"
         penalty_weight = (self.hparams['irm_lambda'] if self.update_count
                           >= self.hparams['irm_penalty_anneal_iters'] else
@@ -900,7 +934,18 @@ class VREx(ERM):
                                   hparams)
         self.register_buffer('update_count', torch.tensor([0]))
 
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
+        self.gan_transform = hparams["gan_transform"]
+        if self.gan_transform:
+            device = next(self.network.parameters()).device
+            self.cyclemixLayer = networks.CycleMix(hparams, device)
+
     def update(self, minibatches, unlabeled=None):
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
+
         if self.update_count >= self.hparams["vrex_penalty_anneal_iters"]:
             penalty_weight = self.hparams["vrex_lambda"]
         else:
@@ -949,8 +994,22 @@ class Mixup(ERM):
         super(Mixup, self).__init__(input_shape, num_classes, num_domains,
                                     hparams)
 
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
+
+        self.gan_transform = hparams["gan_transform"]
+
+        device = next(self.network.parameters()).device
+        # hparams['device'] = self.device
+        if self.gan_transform:
+            self.cyclemixLayer = networks.CycleMix(hparams, device)
+
     def update(self, minibatches, unlabeled=None):
         objective = 0
+
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
 
         for (xi, yi), (xj, yj) in random_pairs_of_minibatches(minibatches):
             lam = np.random.beta(self.hparams["mixup_alpha"],
@@ -1017,6 +1076,14 @@ class MLDG(ERM):
                                    hparams)
         self.num_meta_test = hparams['n_meta_test']
 
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
+        self.gan_transform = hparams["gan_transform"]
+        if self.gan_transform:
+            device = next(self.network.parameters()).device
+            self.cyclemixLayer = networks.CycleMix(hparams, device)
+
     def update(self, minibatches, unlabeled=None):
         """
         Terms being computed:
@@ -1033,6 +1100,10 @@ class MLDG(ERM):
 
         For computational efficiency, we do not compute second derivatives.
         """
+
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
+
         num_mb = len(minibatches)
         objective = 0
 
@@ -1134,6 +1205,16 @@ class AbstractMMD(ERM):
         else:
             self.kernel_type = "mean_cov"
 
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
+
+        self.gan_transform = hparams["gan_transform"]
+
+        device = next(self.network.parameters()).device
+        if self.gan_transform:
+            self.cyclemixLayer = networks.CycleMix(hparams, device)
+
     def my_cdist(self, x1, x2):
         x1_norm = x1.pow(2).sum(dim=-1, keepdim=True)
         x2_norm = x2.pow(2).sum(dim=-1, keepdim=True)
@@ -1172,6 +1253,10 @@ class AbstractMMD(ERM):
             return mean_diff + cova_diff
 
     def update(self, minibatches, unlabeled=None):
+
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
+
         objective = 0
         penalty = 0
         nmb = len(minibatches)
@@ -1332,6 +1417,17 @@ class SagNet(Algorithm):
         self.optimizer_s = opt(self.network_s.parameters())
         self.weight_adv = hparams["sag_w_adv"]
 
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
+
+        self.gan_transform = hparams["gan_transform"]
+
+        device = next(self.network.parameters()).device
+        # hparams['device'] = self.device
+        if self.gan_transform:
+            self.cyclemixLayer = networks.CycleMix(hparams, device)
+
     def forward_c(self, x):
         # learning content network on randomized style
         return self.network_c(self.randomize(self.network_f(x), "style"))
@@ -1365,6 +1461,10 @@ class SagNet(Algorithm):
         return x.view(*sizes)
 
     def update(self, minibatches, unlabeled=None):
+
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
+
         all_x = torch.cat([x for x, y in minibatches])
         all_y = torch.cat([y for x, y in minibatches])
 
@@ -1404,8 +1504,19 @@ class RSC(ERM):
         self.drop_b = (1 - hparams['rsc_b_drop_factor']) * 100
         self.num_classes = num_classes
 
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
+        self.gan_transform = hparams["gan_transform"]
+        if self.gan_transform:
+            device = next(self.network.parameters()).device
+            self.cyclemixLayer = networks.CycleMix(hparams, device)
+
     def update(self, minibatches, unlabeled=None):
         device = "cuda" if minibatches[0][0].is_cuda else "cpu"
+
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
 
         # inputs
         all_x = torch.cat([x for x, y in minibatches])
@@ -1585,7 +1696,20 @@ class SelfReg(ERM):
                             nn.BatchNorm1d(input_feat_size)
         )
 
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
+
+        self.gan_transform = hparams["gan_transform"]
+
+        device = next(self.network.parameters()).device
+        # hparams['device'] = self.device
+        self.cyclemixLayer = networks.CycleMix(hparams, device)
+
     def update(self, minibatches, unlabeled=None):
+
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
 
         all_x = torch.cat([x for x, y in minibatches])
         all_y = torch.cat([y for _, y in minibatches])
@@ -1725,7 +1849,17 @@ class Fishr(Algorithm):
     def __init__(self, input_shape, num_classes, num_domains, hparams):
         assert backpack is not None, "Install backpack with: 'pip install backpack-for-pytorch==1.3.0'"
         super(Fishr, self).__init__(input_shape, num_classes, num_domains, hparams)
+
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
         self.num_domains = num_domains
+        self.gan_transform = hparams["gan_transform"]
+        if self.gan_transform:
+            device = next(self.network.parameters()).device
+            self.cyclemixLayer = networks.CycleMix(hparams, device)
+
+            self.num_domains = int(num_domains * 2)
 
         self.featurizer = networks.Featurizer(input_shape, self.hparams)
         self.classifier = extend(
@@ -1745,6 +1879,16 @@ class Fishr(Algorithm):
         ]
         self._init_optimizer()
 
+        # GAN AUGEMENTATION
+        self.device = next(self.network.parameters()).device
+        self.dataset = hparams["dataset"]
+
+        self.gan_transform = hparams["gan_transform"]
+
+        device = next(self.network.parameters()).device
+        # hparams['device'] = self.device
+        self.cyclemixLayer = networks.CycleMix(hparams, device)
+
     def _init_optimizer(self):
         self.optimizer = torch.optim.Adam(
             list(self.featurizer.parameters()) + list(self.classifier.parameters()),
@@ -1753,6 +1897,9 @@ class Fishr(Algorithm):
         )
 
     def update(self, minibatches, unlabeled=None):
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
+
         assert len(minibatches) == self.num_domains
         all_x = torch.cat([x for x, y in minibatches])
         all_y = torch.cat([y for x, y in minibatches])
