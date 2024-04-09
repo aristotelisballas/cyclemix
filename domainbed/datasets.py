@@ -233,6 +233,7 @@ class MultipleEnvironmentImageFolder(MultipleDomainDataset):
                 mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
         if hparams['algorithm'] == 'CUTOUT':
+            print("Adding CUTOUT augmentation!!!")
             augment_transform = transforms.Compose([
                 # transforms.Resize((224,224)),
                 transforms.RandomResizedCrop(224, scale=(0.7, 1.0)),
