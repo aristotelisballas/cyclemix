@@ -90,6 +90,7 @@ if __name__ == "__main__":
     hparams['dataset'] = args.dataset
     hparams['test_envs'] = args.test_envs
     hparams['gan_transform'] = (args.gan_transform == 1)
+    hparams['algorithm'] = args.algorithm
     print('HParams:')
     for k, v in sorted(hparams.items()):
         print('\t{}: {}'.format(k, v))

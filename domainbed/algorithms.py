@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
 from torchvision import transforms
+from torchvision.transforms import v2
 
 import copy
 import numpy as np
@@ -29,6 +30,8 @@ from domainbed.lib.cyclemix_loss import cyclemix_contra_loss
 
 ALGORITHMS = [
     'ERM',
+    'CUTOUT',
+    'CUTMIX',
     'GANERM',
     'GANERMNEW',
     'CYCLEMIX',
@@ -122,6 +125,90 @@ class ERM(Algorithm):
 
         all_x = torch.cat([x for x, y in minibatches])
         all_y = torch.cat([y for x, y in minibatches])
+        loss = F.cross_entropy(self.predict(all_x), all_y)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {'loss': loss.item()}
+
+    def predict(self, x):
+        return self.network(x)
+
+
+class CUTOUT(Algorithm):
+    """
+    Empirical Risk Minimization (CUTOUT)
+    """
+
+    def __init__(self, input_shape, num_classes, num_domains, hparams):
+        super(CUTOUT, self).__init__(input_shape, num_classes, num_domains,
+                                  hparams)
+        self.featurizer = networks.Featurizer(input_shape, self.hparams)
+        self.classifier = networks.Classifier(
+            self.featurizer.n_outputs,
+            num_classes,
+            self.hparams['nonlinear_classifier'])
+
+        self.network = nn.Sequential(self.featurizer, self.classifier)
+        self.optimizer = torch.optim.Adam(
+            self.network.parameters(),
+            lr=self.hparams["lr"],
+            weight_decay=self.hparams['weight_decay']
+        )
+
+    def update(self, minibatches, unlabeled=None):
+
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
+
+        all_x = torch.cat([x for x, y in minibatches])
+        all_y = torch.cat([y for x, y in minibatches])
+        loss = F.cross_entropy(self.predict(all_x), all_y)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {'loss': loss.item()}
+
+    def predict(self, x):
+        return self.network(x)
+
+
+class CUTMIX(Algorithm):
+    """
+    Empirical Risk Minimization with CutMix (CUTMIX)
+    """
+
+    def __init__(self, input_shape, num_classes, num_domains, hparams):
+        super(CUTMIX, self).__init__(input_shape, num_classes, num_domains,
+                                  hparams)
+        self.featurizer = networks.Featurizer(input_shape, self.hparams)
+        self.classifier = networks.Classifier(
+            self.featurizer.n_outputs,
+            num_classes,
+            self.hparams['nonlinear_classifier'])
+
+        self.network = nn.Sequential(self.featurizer, self.classifier)
+        self.optimizer = torch.optim.Adam(
+            self.network.parameters(),
+            lr=self.hparams["lr"],
+            weight_decay=self.hparams['weight_decay']
+        )
+        self.cutmix = v2.CutMix(num_classes=num_classes)
+
+    def update(self, minibatches, unlabeled=None):
+
+        if self.gan_transform:
+            minibatches = self.cyclemixLayer(minibatches)
+
+        all_x = torch.cat([x for x, y in minibatches])
+        all_y = torch.cat([y for x, y in minibatches])
+
+        all_x, all_y = self.cutmix(all_x, all_y)
+
         loss = F.cross_entropy(self.predict(all_x), all_y)
 
         self.optimizer.zero_grad()
@@ -1423,7 +1510,7 @@ class SagNet(Algorithm):
 
         self.gan_transform = hparams["gan_transform"]
 
-        device = next(self.network.parameters()).device
+        device = next(self.network_f.parameters()).device
         # hparams['device'] = self.device
         if self.gan_transform:
             self.cyclemixLayer = networks.CycleMix(hparams, device)
