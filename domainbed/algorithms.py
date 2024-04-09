@@ -119,10 +119,6 @@ class ERM(Algorithm):
         )
 
     def update(self, minibatches, unlabeled=None):
-
-        if self.gan_transform:
-            minibatches = self.cyclemixLayer(minibatches)
-
         all_x = torch.cat([x for x, y in minibatches])
         all_y = torch.cat([y for x, y in minibatches])
         loss = F.cross_entropy(self.predict(all_x), all_y)
@@ -159,10 +155,6 @@ class CUTOUT(Algorithm):
         )
 
     def update(self, minibatches, unlabeled=None):
-
-        if self.gan_transform:
-            minibatches = self.cyclemixLayer(minibatches)
-
         all_x = torch.cat([x for x, y in minibatches])
         all_y = torch.cat([y for x, y in minibatches])
         loss = F.cross_entropy(self.predict(all_x), all_y)
@@ -200,9 +192,6 @@ class CUTMIX(Algorithm):
         self.cutmix = v2.CutMix(num_classes=num_classes)
 
     def update(self, minibatches, unlabeled=None):
-
-        if self.gan_transform:
-            minibatches = self.cyclemixLayer(minibatches)
 
         all_x = torch.cat([x for x, y in minibatches])
         all_y = torch.cat([y for x, y in minibatches])
