@@ -15,9 +15,9 @@ from domainbed.cyclegan.networks import define_G
 from domainbed.cyclegan.utils import get_sources
 
 
-class CycleMix(nn.Module):
+class CycleMixLayer(nn.Module):
     def __init__(self, hparams, device):
-        super(CycleMix, self).__init__()
+        super(CycleMixLayer, self).__init__()
 
         if torch.cuda.is_available():
             gpu_id = [0]
