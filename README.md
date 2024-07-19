@@ -2,7 +2,7 @@
 This is the official code for the "CycleMix: Mixing Source Domains for Domain 
 Generalization in Style-Dependent Data" paper, to be published in the proceedings of 
 the 13th Hellenic Conference on Artificial Intelligence (SETN 2024).
-The preprint is available [here](https://arxiv.org/abs/2308.14418).
+The preprint is available [here](https://arxiv.org/abs/2407.13421).
 
 ## Method
 In this work, we tackle the Domain Generalization (DG) 
@@ -61,5 +61,13 @@ This source code is released under the MIT license, included [here](LICENSE).
 ## Cite Us
 If you use the above code for your research please cite our paper:
 ```citation
-
+@misc{ballas2024cyclemixmixingsourcedomains,
+      title={CycleMix: Mixing Source Domains for Domain Generalization in Style-Dependent Data}, 
+      author={Aristotelis Ballas and Christos Diou},
+      year={2024},
+      eprint={2407.13421},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2407.13421}, 
+}
 ```
