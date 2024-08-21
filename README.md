@@ -15,7 +15,7 @@ generalization.
 <img src="assets/cyclemix.png" alt="drawing"/>
 
 ## CycleGAN Weights
-The weights for each model can be found [here](domainbed/cyclegan/weights/PACS/)
+The weights for each model can be found [here](domainbed/cyclegan/weights/PACS/).
 
 ## Quick start
 
