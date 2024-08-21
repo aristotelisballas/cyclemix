@@ -10,7 +10,10 @@ problem by training a robust feature extractor which disregards features attribu
 to image-style but infers based on style-invariant image representations. To achieve this, 
 we train CycleGAN models to learn the different styles present in the training data and 
 randomly mix them together to create samples with novel style attributes to improve 
-generalization.
+generalization. 
+
+## CycleGAN Weights
+The weights for each model can be found [here](domainbed/cyclegan/weights/PACS/)
 
 <img src="assets/cyclemix.png" alt="drawing"/>
 
@@ -59,7 +62,7 @@ This source code is released under the MIT license, included [here](LICENSE).
 
 
 ## Cite Us
-If you use the above code for your research please cite our paper:
+If you use the above code or pre-trained CycleGAN [weights](domainbed/cyclegan/weights/PACS/) for your research please cite our paper:
 ```citation
 @misc{ballas2024cyclemixmixingsourcedomains,
       title={CycleMix: Mixing Source Domains for Domain Generalization in Style-Dependent Data}, 
