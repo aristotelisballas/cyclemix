@@ -12,10 +12,10 @@ we train CycleGAN models to learn the different styles present in the training d
 randomly mix them together to create samples with novel style attributes to improve 
 generalization. 
 
+<img src="assets/cyclemix.png" alt="drawing"/>
+
 ## CycleGAN Weights
 The weights for each model can be found [here](domainbed/cyclegan/weights/PACS/)
-
-<img src="assets/cyclemix.png" alt="drawing"/>
 
 ## Quick start
 
